@@ -1,6 +1,9 @@
-- name: Hello World Sample
-  hosts: all
+---
+- name: Check Ping of IP 192.168.20.22
+  hosts: test_ping
+  gather_facts: no
+
   tasks:
-    - name: Hello Message
-      debug:
-        msg: "Hello World!"
+    - name: Ping the IP 192.168.20.22
+      ansible.builtin.ping:
+      delegate_to: 192.168.20.22
