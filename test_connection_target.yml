@@ -1,11 +1,11 @@
 ---
 - name: Connect to target switch via telnet and run show running-configuration
-  hosts: localhost  # Execute this from localhost as we are working with the jump host and target switch
+  hosts: localhost  # Running from localhost as we are working with jump host and target switch
   gather_facts: no
 
   vars:
-    jump_host: 172.19.98.20  # Jump host (your first connection)
-    target_host: 172.16.3.3  # Target switch
+    jump_host: 172.19.98.20  # Jump host IP (for SSH tunneling)
+    target_host: 172.16.3.3  # Target switch IP
 
   tasks:
     - name: Set up the jump host SSH connection
@@ -16,8 +16,8 @@
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ lookup('ansible.builtin.credentials', 'target_switch_pass').username }}"   # Use the credential username
-          "Password:": "{{ lookup('ansible.builtin.credentials', 'target_switch_pass').password }}"   # Use the credential password
+          "Username:": "{{ ansible_user }}"  # Use the username from the AWX credential (e.g., target_switch_user)
+          "Password:": "{{ ansible_password }}"  # Use the password from the AWX credential (e.g., target_switch_pass)
         timeout: 30
         register: telnet_output
 
@@ -25,7 +25,7 @@
       expect:
         command: "show running-configuration"
         responses:
-          "Password:": "{{ lookup('ansible.builtin.credentials', 'target_switch_pass').password }}"  # Use the credential password again if prompted
+          "Password:": "{{ ansible_password }}"  # Reuse password if prompted again
         timeout: 30
         register: running_config_output
 
