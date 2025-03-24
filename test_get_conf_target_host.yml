@@ -1,5 +1,5 @@
 ---
-- name: Test terminal length 0 on the target switch
+- name: Disable terminal length, show running-config, and exit in the same session
   hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: no
 
@@ -9,21 +9,17 @@
     target_switch_password: "{{ target_switch_password }}"  # Password for the switch
 
   tasks:
-    - name: Telnet to the target switch and disable pagination by setting terminal length 0
+    - name: Telnet to the target switch, disable pagination, get running config, and exit in the same session
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"  # Provide username for login
           "Password:": "{{ target_switch_password }}"  # Provide password for login
-          "SWOCESC0-1#": "terminal length 0\n"  # Disable pagination
-        timeout: 60  # Timeout for the connection
+          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"  # Disable pagination, show config, and exit
+        timeout: 120  # Set timeout to 2 minutes for the full configuration
         echo: yes
-      register: telnet_result
+      register: running_config_result
 
-    - name: Display the result after setting terminal length 0
+    - name: Display the raw command output (stdout)
       debug:
-        var: telnet_result.stdout  # This will show the result from the Telnet session
-
-    - name: Display any errors from the Telnet session (stderr)
-      debug:
-        var: telnet_result.stderr  # This will show any error messages from the session
+        var: running_config_result.stdout
