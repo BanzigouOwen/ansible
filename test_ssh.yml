@@ -1,0 +1,24 @@
+---
+- name: Test SSH and Show Version
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Test SSH Connection
+      ansible.builtin.command: ssh -o BatchMode=yes -o ConnectTimeout=5 -p 222 172.19.98.20 exit
+      register: ssh_test
+      ignore_errors: yes
+
+    - name: Display SSH Connection Result
+      debug:
+        var: ssh_test.rc
+
+    - name: Run Show Version Command
+      ansible.builtin.command: ssh -p 222 172.19.98.20 'show version'
+      register: version_output
+      when: ssh_test.rc == 0
+
+    - name: Display Show Version Output
+      debug:
+        var: version_output.stdout
+      when: ssh_test.rc == 0
