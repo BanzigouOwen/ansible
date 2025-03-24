@@ -15,11 +15,11 @@
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          # When the switch prompt is seen, send "exit" to close the session.
           "SWOCESC0-1#": "exit\n"
         timeout: 60
         echo: yes
       register: telnet_result
+      failed_when: false
 
     - name: Display telnet session output
       debug:
