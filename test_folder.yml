@@ -1,0 +1,13 @@
+---
+- name: Test File Path Verification
+  hosts: localhost
+  gather_facts: no
+
+  tasks:
+    - name: Verify file path before saving
+      shell: ls -l /mnt/c/Users/obanzigou/Documents/
+      register: file_check
+
+    - name: Show the result of the file path check
+      debug:
+        var: file_check.stdout
