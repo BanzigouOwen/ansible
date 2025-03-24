@@ -1,14 +1,31 @@
 ---
-- hosts: Cisco_Devices
-gather_facts: false
+- name: Disable terminal length, show running-config, and exit in the same session
+  hosts: 172.19.98.20  # IP of the Jump Host
+  gather_facts: no
   connection: network_cli
-tasks:
-- name: get timestamp
-     command: date +%Y%m%d-%H-%M-%S
-     register: timestamp
-- name: backup ios config
-     ios_config:
-       backup: yes
-       backup_options:
-         filename: "running-config-{{ timestamp.stdout }}"
-         dir_path: "/data/{{ inventory_hostname }}"
+
+  vars:
+    target_host: 172.16.3.3  # IP of the Target Switch
+    target_switch_username: "{{ target_switch_username }}"  # Username for the switch
+    target_switch_password: "{{ target_switch_password }}"  # Password for the switch
+
+  tasks:
+    - name: Disable pagination and retrieve running-config
+      ios_config:
+        authorize: yes
+        config:
+          - "terminal length 0"
+          - "show running-config"
+      register: running_config_result
+      failed_when: false
+
+    - name: Backup running config to a file
+      ios_config:
+        backup: yes
+        backup_options:
+          filename: "running-config-{{ ansible_date_time.iso8601_basic }}"
+          dir_path: "/data/{{ inventory_hostname }}"
+
+    - name: Display the raw command output (stdout)
+      debug:
+        var: running_config_result.stdout
