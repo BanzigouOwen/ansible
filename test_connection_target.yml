@@ -1,40 +1,24 @@
 ---
-- name: Connect to target switch via Telnet through Jump Host and run show running-configuration
-  hosts: localhost
+- name: Test Telnet Connection from Jump Host to Target Switch
+  hosts: 172.19.98.20
   gather_facts: no
 
   vars:
-    jump_host: 172.19.98.20  # Jump host IP (SSH connection)
-    target_host: 172.16.3.3  # Target switch IP (Telnet connection)
-    target_switch_username: "{{ target_switch_username }}"  # Username for the target switch
-    target_switch_password: "{{ target_switch_password }}"  # Password for the target switch
-    jump_host_ssh_port: "{{ ansible_port }}"  # SSH port for jump host (from the variable)
+    target_host: 172.16.3.3         # Target switch IP
+    target_switch_username: "{{ target_switch_username }}"  # e.g., OAdmin
+    target_switch_password: "{{ target_switch_password }}"  # e.g., xxx123
 
   tasks:
-    - name: Set up SSH connection to the jump host (via ProxyCommand)
-      ansible.builtin.set_fact:
-        ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -p {{ jump_host_ssh_port }} {{ jump_host }}"'
-
-    - name: Use the jump host to connect via Telnet to the target switch
+    - name: Telnet from jump host to target switch
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ target_switch_username }}"  # Use the username passed in variables
-          "Password:": "{{ target_switch_password }}"  # Use the password passed in variables
+          "Username:": "{{ target_switch_username }}"
+          "Password:": "{{ target_switch_password }}"
         timeout: 30
         echo: yes
-      delegate_to: localhost
+      register: telnet_result
 
-    - name: Run 'show running-configuration' command on the target switch
-      expect:
-        command: "show running-configuration"
-        responses:
-          "Password:": "{{ target_switch_password }}"  # Use the target switch password if prompted
-        timeout: 30
-        echo: yes
-      delegate_to: localhost
-
-    - name: Display the show running-configuration output
+    - name: Display telnet session output
       debug:
-        var: running_config_output.stdout
-      delegate_to: localhost
+        var: telnet_result.stdout
