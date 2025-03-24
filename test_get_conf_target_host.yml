@@ -17,7 +17,7 @@
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
           "SWOCESC0-1#": "terminal length 0\n"  # Disable pagination
-          "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Run the show running-config command
+          # "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Run the show running-config command
         timeout: 30  # Increase timeout for large output
         echo: yes
       register: telnet_result
