@@ -16,12 +16,18 @@
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          ".*#": "{{ target_switch_command }}\nexit\n"
-        timeout: 120
+          ".*#": "{{ target_switch_command }}\nexit\n"  # Command to run
+        timeout: 60  # Increase timeout (e.g., 1 minutes)
         echo: yes
       register: get_configuration_cisco
       failed_when: false
+      retries: 3  # Retry the task in case of timeout
+      delay: 10  # Delay between retries in seconds
 
     - name: Display command output
       debug:
         var: get_configuration_cisco.stdout
+
+    - name: Display any errors from the Telnet session
+      debug:
+        var: get_configuration_cisco.stderr
