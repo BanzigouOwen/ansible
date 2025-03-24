@@ -1,9 +1,8 @@
----
-- name: Check Ping of IP 192.168.20.22
-  hosts: all
-  gather_facts: no
+- name: Check the current user inside AWX
+  command: whoami
+  delegate_to: localhost
+  register: awx_user
 
-  tasks:
-    - name: Ping the IP 192.168.20.22
-      ansible.builtin.ping:
-      delegate_to: 192.168.20.22
+- name: Display AWX user
+  debug:
+    var: awx_user.stdout
