@@ -16,7 +16,7 @@
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          ".*#": "{{ target_switch_command }}\nexit\n"  # Command to run
+          "SWOCESC0-1#": "{{ target_switch_command }}\nexit\n"  # Command to run
         timeout: 60  # Increase timeout (e.g., 1 minutes)
         echo: yes
       register: get_configuration_cisco
