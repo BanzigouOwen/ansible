@@ -1,9 +1,12 @@
 ---
 - name: Check the current user inside AWX
-  command: whoami
-  delegate_to: localhost
-  register: awx_user
+  hosts: localhost
+  gather_facts: no
+  tasks:
+    - name: Check the current user inside AWX
+      command: whoami
+      register: awx_user
 
-- name: Display AWX user
-  debug:
-    var: awx_user.stdout
+    - name: Display AWX user
+      debug:
+        var: awx_user.stdout
