@@ -1,31 +1,26 @@
 ---
-- name: Get running configuration from target switch via Telnet through Jump Host
+- name: Test Telnet Connection from Jump Host to Target Switch
   hosts: 172.19.98.20
   gather_facts: no
 
   vars:
-    target_host: 172.16.3.3
-    target_switch_username: "{{ target_switch_username }}"
-    target_switch_password: "{{ target_switch_password }}"
-    target_switch_command: "show running-config"
+    target_host: 172.16.3.3         # Target switch IP
+    target_switch_username: "{{ target_switch_username }}"  # e.g., OAdmin
+    target_switch_password: "{{ target_switch_password }}"  # e.g., xxx123
 
   tasks:
-    - name: Telnet to the target switch and disable pagination by setting terminal length 0
+    - name: Telnet from jump host to target switch and exit on prompt
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "terminal length 0\n"  # Disable pagination
-          # "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Run the show running-config command
-        timeout: 30  # Increase timeout for large output
+          "SWOCESC0-1#": "exit\n"
+        timeout: 60
         echo: yes
       register: telnet_result
+      failed_when: false
 
-    - name: Display the full output of the show running-config command
+    - name: Display telnet session output
       debug:
         var: telnet_result.stdout
-
-    - name: Display any errors from the Telnet session (stderr)
-      debug:
-        var: telnet_result.stderr
