@@ -1,4 +1,4 @@
---
+---
 - name: Check the current user inside AWX
   command: whoami
   delegate_to: localhost
