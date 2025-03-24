@@ -1,0 +1,27 @@
+---
+- name: Get running configuration from target switch via Telnet through Jump Host
+  hosts: 172.19.98.20
+  gather_facts: no
+
+  vars:
+    target_host: 172.16.3.3
+    target_switch_username: "{{ target_switch_username }}"
+    target_switch_password: "{{ target_switch_password }}"
+    target_switch_command: "{{ target_switch_command }}"  # Command to run, provided by AWX extra vars
+
+  tasks:
+    - name: Telnet and retrieve command output dynamically
+      expect:
+        command: "telnet {{ target_host }}"
+        responses:
+          "Username:": "{{ target_switch_username }}"
+          "Password:": "{{ target_switch_password }}"
+          ".*#": "{{ target_switch_command }}\nexit\n"
+        timeout: 120
+        echo: yes
+      register: get_configuration_cisco
+      failed_when: false
+
+    - name: Display command output
+      debug:
+        var: get_configuration_cisco.stdout
