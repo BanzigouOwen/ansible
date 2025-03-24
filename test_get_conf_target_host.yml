@@ -1,26 +1,29 @@
 ---
-- name: Test Telnet Connection from Jump Host to Target Switch
-  hosts: 172.19.98.20
+- name: Test terminal length 0 on the target switch
+  hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: no
 
   vars:
-    target_host: 172.16.3.3         # Target switch IP
-    target_switch_username: "{{ target_switch_username }}"  # e.g., OAdmin
-    target_switch_password: "{{ target_switch_password }}"  # e.g., xxx123
+    target_host: 172.16.3.3  # IP of the Target Switch
+    target_switch_username: "{{ target_switch_username }}"  # Username for the switch
+    target_switch_password: "{{ target_switch_password }}"  # Password for the switch
 
   tasks:
-    - name: Telnet from jump host to target switch and exit on prompt
+    - name: Telnet to the target switch and disable pagination by setting terminal length 0
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ target_switch_username }}"
-          "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "exit\n"
-        timeout: 60
+          "Username:": "{{ target_switch_username }}"  # Provide username for login
+          "Password:": "{{ target_switch_password }}"  # Provide password for login
+          "SWOCESC0-1#": "terminal length 0\n"  # Disable pagination
+        timeout: 60  # Timeout for the connection
         echo: yes
       register: telnet_result
-      failed_when: false
 
-    - name: Display telnet session output
+    - name: Display the result after setting terminal length 0
       debug:
-        var: telnet_result.stdout
+        var: telnet_result.stdout  # This will show the result from the Telnet session
+
+    - name: Display any errors from the Telnet session (stderr)
+      debug:
+        var: telnet_result.stderr  # This will show any error messages from the session
