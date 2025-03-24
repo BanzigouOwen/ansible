@@ -1,16 +1,17 @@
 ---
-- name: Test Telnet to Target Switch via Jump Host and run show running-configuration
+- name: Connect to target switch via Telnet through Jump Host and run show running-configuration
   hosts: localhost
   gather_facts: no
 
   vars:
     jump_host: 172.19.98.20  # Jump host IP (SSH connection)
     target_host: 172.16.3.3  # Target switch IP (Telnet connection)
-    target_switch_pass: "{{ target_switch_password }}"  # Password for the target switch
-    jump_host_ssh_port: 222  # SSH port for jump host, if not default 22
+    target_switch_username: "{{ target_switch_username }}"  # Username for the target switch
+    target_switch_password: "{{ target_switch_password }}"  # Password for the target switch
+    jump_host_ssh_port: "{{ ansible_port }}"  # SSH port for jump host (from the variable)
 
   tasks:
-    - name: Set up the jump host SSH connection to keep the session open
+    - name: Set up SSH connection to the jump host (via ProxyCommand)
       ansible.builtin.set_fact:
         ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -p {{ jump_host_ssh_port }} {{ jump_host }}"'
 
@@ -18,17 +19,17 @@
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ ansible_user }}"  # Use the jump host username
-          "Password:": "{{ ansible_password }}"  # Use the jump host password
+          "Username:": "{{ target_switch_username }}"  # Use the username passed in variables
+          "Password:": "{{ target_switch_password }}"  # Use the password passed in variables
         timeout: 30
         echo: yes
       delegate_to: localhost
 
-    - name: Send 'show running-configuration' command to the target switch
+    - name: Run 'show running-configuration' command on the target switch
       expect:
         command: "show running-configuration"
         responses:
-          "Password:": "{{ target_switch_pass }}"  # Target switch password for Telnet login
+          "Password:": "{{ target_switch_password }}"  # Use the target switch password if prompted
         timeout: 30
         echo: yes
       delegate_to: localhost
