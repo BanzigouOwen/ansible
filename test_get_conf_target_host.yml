@@ -19,6 +19,7 @@
         timeout: 120  # Set timeout to 2 minutes for the full configuration
         echo: yes
       register: running_config_result
+      failed_when: false
 
     - name: Display the raw command output (stdout)
       debug:
