@@ -1,9 +1,11 @@
 ---
-- name: Check Ping of IP 8.8.8.8
+- name: Check Ping of IP 172.19.98.20
   hosts: localhost
   gather_facts: no
 
   tasks:
-    - name: Ping the IP 8.8.8.8
+    - name: Ping the IP 172.19.98.20
       ansible.builtin.ping:
-      delegate_to: 8.8.8.8
+      delegate_to: 172.19.98.20
+      vars:
+        ansible_port: 222  # Change this to your actual SSH port
