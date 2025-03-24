@@ -19,8 +19,6 @@
           "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Command to run (e.g., 'show running-configuration')
         timeout: 60  # Timeout of 60 seconds
         echo: yes
-        strip_ansi: yes  # Clean output
-        match: "SWOCESC0-1#"
       register: initial_telnet_result
 
     - name: Handle pagination and keep reading until no more --More-- prompt
@@ -33,9 +31,6 @@
           "SWOCESC0-1#": "\n"  # Send spacebar to handle --More-- prompt
         timeout: 60  # Timeout of 60 seconds
         echo: yes
-        strip_ansi: yes  # Clean output
-        match: "SWOCESC0-1#"  # Match the prompt after command execution
-        searchwindowsize: 100  # Search last 100 characters for the prompt
       register: paginated_telnet_result
       until: paginated_telnet_result.stdout is search("SWOCESC0-1#")
       retries: 10  # Retry 10 times (adjust as needed)
