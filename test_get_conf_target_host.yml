@@ -7,43 +7,43 @@
     target_host: 172.16.3.3
     target_switch_username: "{{ target_switch_username }}"
     target_switch_password: "{{ target_switch_password }}"
-    target_switch_command: "{{ target_switch_command }}"  # Command to run, provided by AWX extra vars
+    target_switch_command: "{{ target_switch_command }}"  # Command to run (e.g., 'show running-configuration')
 
   tasks:
-    - name: Telnet to the target switch
+    - name: Telnet to the target switch and run the command
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
           "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Command to run (e.g., 'show running-configuration')
-        timeout: 60  # Timeout of 60 seconds
+        timeout: 120  # Increased timeout to handle large configurations
         echo: yes
-      register: initial_telnet_result
+      register: telnet_result
 
-    - name: Handle pagination and keep reading until no more --More-- prompt
+    - name: Handle pagination (send space for --More-- prompt)
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Command to run (e.g., 'show running-configuration')
-          "SWOCESC0-1#": "\n"  # Send spacebar to handle --More-- prompt
-        timeout: 60  # Timeout of 60 seconds
+          "SWOCESC0-1#": "show running-config\n"  # Repeat the command if needed
+          "More--": " "  # Send space to handle pagination after every --More-- prompt
+        timeout: 120  # Increased timeout for large outputs
         echo: yes
-      register: paginated_telnet_result
-      until: paginated_telnet_result.stdout is search("SWOCESC0-1#")
-      retries: 10  # Retry 10 times (adjust as needed)
-      delay: 5  # Delay between retries (adjust if needed)
+      register: telnet_result_full
+      until: "'SWOCESC0-1#' in telnet_result_full.stdout"  # Keep going until the final prompt appears
+      retries: 10  # Retry 10 times if necessary
+      delay: 5  # 5-second delay between retries
 
-    - name: Display the raw telnet session output (stdout)
+    - name: Display the full output of the Telnet session
       debug:
-        var: paginated_telnet_result.stdout
+        var: telnet_result_full.stdout
 
     - name: Display any errors from the Telnet session (stderr)
       debug:
-        var: paginated_telnet_result.stderr
+        var: telnet_result_full.stderr
 
     - name: Display the status code of the Telnet session
       debug:
-        var: paginated_telnet_result.rc
+        var: telnet_result_full.rc
