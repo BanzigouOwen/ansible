@@ -1,33 +1,34 @@
 ---
 - name: Connect to target switch via telnet and run show running-configuration
-  hosts: localhost  # Running from localhost as we are working with jump host and target switch
+  hosts: localhost
   gather_facts: no
 
   vars:
     jump_host: 172.19.98.20  # Jump host IP (for SSH tunneling)
     target_host: 172.16.3.3  # Target switch IP
+    target_switch_pass: "{{ target_switch_password }}"  # This will be passed as an extra variable
 
   tasks:
     - name: Set up the jump host SSH connection
       ansible.builtin.set_fact:
         ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -p 222 {{ jump_host }}"'
 
-    - name: Use target_switch_pass credentials for Telnet connection to target switch
+    - name: Use the jump host to connect via telnet to the target switch
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ ansible_user }}"  # Use the username from the AWX credential (e.g., target_switch_user)
-          "Password:": "{{ ansible_password }}"  # Use the password from the AWX credential (e.g., target_switch_pass)
+          "Username:": "{{ ansible_user }}"  # Use the username from the AWX jump host credential
+          "Password:": "{{ ansible_password }}"  # Password from the AWX jump host credential
         timeout: 30
-        register: telnet_output
+        echo: yes
 
     - name: Send 'show running-configuration' command after login
       expect:
         command: "show running-configuration"
         responses:
-          "Password:": "{{ ansible_password }}"  # Reuse password if prompted again
+          "Password:": "{{ target_switch_pass }}"  # Use the target switch password passed as extra variable
         timeout: 30
-        register: running_config_output
+        echo: yes
 
     - name: Save running configuration to a file
       copy:
