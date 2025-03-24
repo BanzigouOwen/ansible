@@ -1,0 +1,39 @@
+---
+- name: Connect to target switch via telnet and run show running-configuration
+  hosts: localhost  # Execute this from localhost as we are working with the jump host and target switch
+  gather_facts: no
+
+  vars:
+    jump_host: 172.19.98.20  # Jump host (your first connection)
+    target_host: 172.16.3.3  # Target switch
+
+  tasks:
+    - name: Set up the jump host SSH connection
+      ansible.builtin.set_fact:
+        ansible_ssh_common_args: '-o ProxyCommand="ssh -W %h:%p -p 222 {{ jump_host }}"'
+
+    - name: Use target_switch_pass credentials for Telnet connection to target switch
+      expect:
+        command: "telnet {{ target_host }}"
+        responses:
+          "Username:": "{{ lookup('ansible.builtin.credentials', 'target_switch_pass').username }}"   # Use the credential username
+          "Password:": "{{ lookup('ansible.builtin.credentials', 'target_switch_pass').password }}"   # Use the credential password
+        timeout: 30
+        register: telnet_output
+
+    - name: Send 'show running-configuration' command after login
+      expect:
+        command: "show running-configuration"
+        responses:
+          "Password:": "{{ lookup('ansible.builtin.credentials', 'target_switch_pass').password }}"  # Use the credential password again if prompted
+        timeout: 30
+        register: running_config_output
+
+    - name: Save running configuration to a file
+      copy:
+        content: "{{ running_config_output.stdout }}"
+        dest: "/tmp/running_config_{{ target_host }}.txt"
+
+    - name: Display the show running-configuration output
+      debug:
+        var: running_config_output.stdout
