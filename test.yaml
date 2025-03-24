@@ -1,6 +1,6 @@
 ---
 - name: Check Ping of IP 192.168.20.22
-  hosts: test_ping
+  hosts: all
   gather_facts: no
 
   tasks:
