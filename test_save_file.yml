@@ -20,6 +20,7 @@
         timeout: 120  # Set timeout to 2 minutes for the full configuration
         echo: yes
       register: running_config_result
+      failed_when: false
 
     - name: Save the running config output to a file on the local machine (WSL)
       copy:
