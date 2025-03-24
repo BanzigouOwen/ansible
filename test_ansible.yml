@@ -11,7 +11,7 @@
 
   tasks:
     - name: Disable pagination and retrieve running-config
-      ios_config:
+      cisco.ios.ios_config:
         authorize: yes
         config:
           - "terminal length 0"
@@ -20,7 +20,7 @@
       failed_when: false
 
     - name: Backup running config to a file
-      ios_config:
+      cisco.ios.ios_config:
         backup: yes
         backup_options:
           filename: "running-config-{{ ansible_date_time.iso8601_basic }}"
