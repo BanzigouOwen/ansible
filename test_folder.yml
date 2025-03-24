@@ -1,13 +1,13 @@
 ---
-- name: Test File Path Verification
+- name: Verify current working directory in AWX/WSL
   hosts: localhost
   gather_facts: no
 
   tasks:
-    - name: Verify file path before saving
-      shell: ls -l /mnt/c/Users/obanzigou/Documents/
-      register: file_check
+    - name: Check current directory
+      shell: pwd
+      register: current_directory
 
-    - name: Show the result of the file path check
+    - name: Show current working directory
       debug:
-        var: file_check.stdout
+        var: current_directory.stdout
