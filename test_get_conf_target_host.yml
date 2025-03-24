@@ -17,17 +17,21 @@
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
           "SWOCESC0-1#": "{{ target_switch_command }}\nexit\n"  # Command to run
-        timeout: 60  # Increase timeout (e.g., 1 minutes)
+        timeout: 120  # Increase timeout (e.g., 2 minutes)
         echo: yes
       register: get_configuration_cisco
       failed_when: false
       retries: 3  # Retry the task in case of timeout
       delay: 10  # Delay between retries in seconds
 
-    - name: Display command output
+    - name: Display the raw command output (stdout)
       debug:
         var: get_configuration_cisco.stdout
 
-    - name: Display any errors from the Telnet session
+    - name: Display any errors from the Telnet session (stderr)
       debug:
         var: get_configuration_cisco.stderr
+
+    - name: Display the status code of the Telnet session
+      debug:
+        var: get_configuration_cisco.rc
