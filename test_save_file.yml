@@ -1,0 +1,33 @@
+---
+- name: Disable terminal length, show running-config, and save output to a file
+  hosts: 172.19.98.20  # IP of the Jump Host
+  gather_facts: no
+
+  vars:
+    target_host: 172.16.3.3  # IP of the Target Switch
+    target_switch_username: "{{ target_switch_username }}"  # Username for the switch
+    target_switch_password: "{{ target_switch_password }}"  # Password for the switch
+    output_file_path: "/mnt/c/Users/obanzigou/Documents/running-config.txt"  # Path where the file will be saved (adjust to your WSL mount)
+
+  tasks:
+    - name: Telnet to the target switch, disable pagination, get running config, and exit in the same session
+      expect:
+        command: "telnet {{ target_host }}"
+        responses:
+          "Username:": "{{ target_switch_username }}"  # Provide username for login
+          "Password:": "{{ target_switch_password }}"  # Provide password for login
+          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"  # Disable pagination, show config, and exit
+        timeout: 120  # Set timeout to 2 minutes for the full configuration
+        echo: yes
+      register: running_config_result
+
+    - name: Save the running config output to a file on the local machine (WSL)
+      copy:
+        content: "{{ running_config_result.stdout }}"
+        dest: "{{ output_file_path }}"
+        mode: '0644'  # Set the file permissions as read-write for owner, read-only for others
+      delegate_to: localhost  # Save the file on the AWX control machine (WSL)
+
+    - name: Display the file path where the config is saved
+      debug:
+        msg: "The running config has been saved to {{ output_file_path }}"
