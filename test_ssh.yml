@@ -7,10 +7,10 @@
     - name: Test SSH Connection
       ansible.builtin.ping:
 
-    - name: Run Show Version Command
-      ansible.builtin.command: show version
+    - name: Run uname -a Command
+      ansible.builtin.command: uname -a
       register: version_output
 
-    - name: Display Show Version Output
+    - name: Display uname -a Output
       debug:
         var: version_output.stdout
