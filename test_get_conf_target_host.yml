@@ -15,10 +15,8 @@
         responses:
           "Username:": "{{ target_switch_username }}"  # Provide username for login
           "Password:": "{{ target_switch_password }}"  # Provide password for login
-        config:
-      - "terminal length 0"
-      - "show running-config"
-          #"SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"  # Disable pagination, show config, and exit
+      
+          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"  # Disable pagination, show config, and exit
         timeout: 120  # Set timeout to 2 minutes for the full configuration
         echo: yes
       register: running_config_result
