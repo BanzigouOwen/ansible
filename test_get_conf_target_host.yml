@@ -10,40 +10,32 @@
     target_switch_command: "show running-config"
 
   tasks:
-    - name: Telnet to the target switch and retrieve the configuration
+    - name: Telnet to the target switch and send terminal length 0 to disable pagination
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "{{ target_switch_command }}\n"
-        timeout: 120  # Increased timeout to handle large outputs
+          "SWOCESC0-1#": "terminal length 0\n"  # Disable pagination
+        timeout: 60  # Adjust timeout for the command
         echo: yes
       register: telnet_result
 
-    - name: Handle pagination (send space for --More-- prompt)
+    - name: Run the show running-config command after disabling pagination
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Repeat the command if needed
-          "--More--": " "  # Send space to handle pagination after every --More-- prompt
-        timeout: 300  # Increased timeout to handle long outputs
+          "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Run the show running-config command
+        timeout: 60  # Shorter timeout for this step
         echo: yes
-      register: telnet_result_full
-      until: "'SWOCESC0-1#' in telnet_result_full.stdout"  # Keep going until the final prompt appears
-      retries: 20  # Retry 20 times if necessary (for long outputs)
-      delay: 10  # 10-second delay between retries
+      register: show_running_config
 
-    - name: Display the full output of the Telnet session
+    - name: Display the full output of the show running-config command
       debug:
-        var: telnet_result_full.stdout
+        var: show_running_config.stdout
 
     - name: Display any errors from the Telnet session (stderr)
       debug:
-        var: telnet_result_full.stderr
-
-    - name: Display the status code of the Telnet session
-      debug:
-        var: telnet_result_full.rc
+        var: show_running_config.stderr
