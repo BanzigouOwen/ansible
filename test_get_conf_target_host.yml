@@ -10,28 +10,45 @@
     target_switch_command: "{{ target_switch_command }}"  # Command to run, provided by AWX extra vars
 
   tasks:
-    - name: Telnet and retrieve command output dynamically
+    - name: Telnet to the target switch
       expect:
         command: "telnet {{ target_host }}"
         responses:
           "Username:": "{{ target_switch_username }}"
           "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "{{ target_switch_command }}\nexit\n"  # Command to run
-        timeout: 120  # Increase timeout (e.g., 2 minutes)
+          "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Command to run (e.g., 'show running-configuration')
+        timeout: 60  # Timeout of 60 seconds
         echo: yes
-      register: get_configuration_cisco
-      failed_when: false
-      retries: 3  # Retry the task in case of timeout
-      delay: 10  # Delay between retries in seconds
+        strip_ansi: yes  # Clean output
+        match: "SWOCESC0-1#"
+      register: initial_telnet_result
 
-    - name: Display the raw command output (stdout)
+    - name: Handle pagination and keep reading until no more --More-- prompt
+      expect:
+        command: "telnet {{ target_host }}"
+        responses:
+          "Username:": "{{ target_switch_username }}"
+          "Password:": "{{ target_switch_password }}"
+          "SWOCESC0-1#": "{{ target_switch_command }}\n"  # Command to run (e.g., 'show running-configuration')
+          "SWOCESC0-1#": "\n"  # Send spacebar to handle --More-- prompt
+        timeout: 60  # Timeout of 60 seconds
+        echo: yes
+        strip_ansi: yes  # Clean output
+        match: "SWOCESC0-1#"  # Match the prompt after command execution
+        searchwindowsize: 100  # Search last 100 characters for the prompt
+      register: paginated_telnet_result
+      until: paginated_telnet_result.stdout is search("SWOCESC0-1#")
+      retries: 10  # Retry 10 times (adjust as needed)
+      delay: 5  # Delay between retries (adjust if needed)
+
+    - name: Display the raw telnet session output (stdout)
       debug:
-        var: get_configuration_cisco.stdout
+        var: paginated_telnet_result.stdout
 
     - name: Display any errors from the Telnet session (stderr)
       debug:
-        var: get_configuration_cisco.stderr
+        var: paginated_telnet_result.stderr
 
     - name: Display the status code of the Telnet session
       debug:
-        var: get_configuration_cisco.rc
+        var: paginated_telnet_result.rc
