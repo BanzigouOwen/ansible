@@ -1,31 +1,31 @@
 ---
-- name: Disable terminal length, show running-config, and exit in the same session
-  hosts: 172.19.98.20  # IP of the Jump Host
+- name: Retrieve running configuration via SSH and save clean backup
+  hosts: 172.16.3.3       # Use the target switch IP
   gather_facts: no
   connection: network_cli
-
   vars:
-    target_host: 172.16.3.3  # IP of the Target Switch
-    target_switch_username: "{{ target_switch_username }}"  # Username for the switch
-    target_switch_password: "{{ target_switch_password }}"  # Password for the switch
+    ansible_network_os: cisco.ios.ios
+    ansible_user: "{{ target_switch_username }}"
+    ansible_password: "{{ target_switch_password }}"
+    ansible_become: yes
+    ansible_become_method: enable
 
   tasks:
     - name: Disable pagination and retrieve running-config
-      cisco.ios.ios_config:
-        authorize: yes
-        config:
-          - "terminal length 0"
-          - "show running-config"
-      register: running_config_result
-      failed_when: false
+      cisco.ios.ios_command:
+        commands:
+          - terminal length 0
+          - show running-config
+      register: cmd_output
 
-    - name: Backup running config to a file
-      cisco.ios.ios_config:
-        backup: yes
-        backup_options:
-          filename: "running-config-{{ ansible_date_time.iso8601_basic }}"
-          dir_path: "/data/{{ inventory_hostname }}"
+    - name: Save clean running config backup to file
+      copy:
+        # We assume the running configuration is returned in the second element.
+        # Depending on your IOS version the prompt/echo might be in stdout[0],
+        # so adjust the index if needed.
+        content: "{{ cmd_output.stdout[1] | trim }}"
+        dest: "/data/{{ inventory_hostname }}/running-config-backup.txt"
 
-    - name: Display the raw command output (stdout)
+    - name: Display backup file content (for verification)
       debug:
-        var: running_config_result.stdout
+        msg: "{{ cmd_output.stdout[1] | trim }}"
