@@ -1,7 +1,8 @@
 ---
-- name: Retrieve and store running configuration in date-based folder
+- name: Retrieve and store running configuration in date-based folder if not already saved
   hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: yes   # Needed to use ansible_date_time variable
+
   vars:
     target_host: 172.16.3.3         # IP of the Target Switch
     target_switch_username: "{{ target_switch_username }}"
@@ -45,15 +46,27 @@
         state: directory
         mode: '0755'
 
-    - name: Save running configuration to file in the date directory
+    - name: Set file path variable for configuration file
+      set_fact:
+        config_file_path: "{{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt"
+
+    - name: Check if the configuration file already exists
+      stat:
+        path: "{{ config_file_path }}"
+      register: file_check
+
+    - name: Save running configuration to file if it does not exist already
       copy:
         content: "{{ config_output }}"
-        dest: "{{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt"
+        dest: "{{ config_file_path }}"
         mode: '0644'
+      when: not file_check.stat.exists
 
-    - name: Display file save path and instructions
+    - name: Display final message regarding file saving
       debug:
         msg: >
-          The running configuration has been saved at
-          {{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt.
-          You can view it with: cat {{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt
+          {% if file_check.stat.exists %}
+          The configuration file already exists at {{ config_file_path }}. No new file was created.
+          {% else %}
+          The running configuration has been successfully saved at {{ config_file_path }}.
+          {% endif %}
