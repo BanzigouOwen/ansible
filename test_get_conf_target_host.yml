@@ -9,7 +9,7 @@
     target_switch_password: "{{ target_switch_password }}"  # Password for the switch
 
   tasks:
-    - name: Telnet to the target switch, disable pagination, get running config, and exit in one session
+    - name: Telnet to the target switch, disable pagination, get running config, and exit
       expect:
         command: "telnet {{ target_host }}"
         responses:
@@ -21,6 +21,11 @@
       register: running_config_result
       failed_when: false
 
-    - name: Output the running configuration (plain text copy/paste)
+    - name: Extract configuration portion from output
+      set_fact:
+        # Splits the output on "Current configuration :" and then on "SWOCESC0-1#exit" to isolate only the config.
+        config_text: "{{ running_config_result.stdout.split('Current configuration :')[1].split('SWOCESC0-1#exit')[0] }}"
+
+    - name: Display configuration for copy-paste
       debug:
-        msg: "{{ running_config_result.stdout | regex_replace('\\r', '') }}"
+        msg: "{{ config_text | regex_replace('\\r', '') }}"
