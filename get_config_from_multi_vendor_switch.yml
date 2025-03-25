@@ -1,18 +1,16 @@
 ---
-# Debug task to confirm which host is being processed
-- name: Debug: Starting configuration retrieval for {{ target_switch }}
+- name: "Debug: Starting configuration retrieval for {{ target_switch }}"
   debug:
     msg: "Processing target switch: {{ target_switch }}"
 
-- name: Define command map for vendors
+- name: "Define command map for vendors"
   set_fact:
     command_map:
       switch_cisco: "show running-config"
       switch_aruba: "display current-configuration"
       switch_huawei: "display current-configuration"
 
-# Use trim filter to avoid whitespace issues and ensure robust matching
-- name: Detect vendor for {{ target_switch }}
+- name: "Detect vendor for {{ target_switch }}"
   set_fact:
     vendor: >-
       {%- set target_clean = target_switch | trim -%}
@@ -26,32 +24,30 @@
       unknown
       {%- endif -%}
 
-- name: Debug: Vendor detection result for {{ target_switch }}
+- name: "Debug: Vendor detection result for {{ target_switch }}"
   debug:
-    msg: >
+    msg: |
       Target switch: '{{ target_switch | trim }}'
-      detected as vendor: '{{ vendor }}'
+      Detected vendor: '{{ vendor }}'
       Inventory check:
-      Cisco: {{ groups['switch_cisco'] | default([]) | map('trim') | list }},
-      Aruba: {{ groups['switch_aruba'] | default([]) | map('trim') | list }},
-      Huawei: {{ groups['switch_huawei'] | default([]) | map('trim') | list }}
+        Cisco: {{ groups['switch_cisco'] | default([]) | map('trim') | list }}
+        Aruba: {{ groups['switch_aruba'] | default([]) | map('trim') | list }}
+        Huawei: {{ groups['switch_huawei'] | default([]) | map('trim') | list }}
 
-- name: Fail if vendor is unknown for {{ target_switch }}
+- name: "Fail if vendor is unknown for {{ target_switch }}"
   fail:
     msg: "Unknown switch vendor for {{ target_switch }}"
   when: vendor == "unknown"
 
-- name: Set final command for {{ target_switch }}
+- name: "Set final command for {{ target_switch }}"
   set_fact:
     final_command: "{{ command_map[vendor] }}"
-  # Debug the final command set for this vendor
-  register: final_command_debug
 
-- name: Debug: Final command for {{ target_switch }}
+- name: "Debug: Final command for {{ target_switch }}"
   debug:
     msg: "Final command for vendor '{{ vendor }}': {{ final_command }}"
 
-- name: Telnet to target switch {{ target_switch }} to retrieve configuration
+- name: "Telnet to target switch {{ target_switch }} to retrieve configuration"
   expect:
     command: "telnet {{ target_switch }}"
     responses:
@@ -64,15 +60,15 @@
   failed_when: "'Login incorrect' in running_config_result.stdout or 'not found' in running_config_result.stdout"
   ignore_errors: yes
 
-- name: Debug: Telnet result for {{ target_switch }}
+- name: "Debug: Telnet result for {{ target_switch }}"
   debug:
     msg: "Telnet result for {{ target_switch }}: {{ running_config_result.stdout }}"
 
-- name: Skip this host if Telnet failed for {{ target_switch }}
+- name: "Skip this host if Telnet failed for {{ target_switch }}"
   meta: end_host
   when: running_config_result is failed or not running_config_result.stdout
 
-- name: Extract switch hostname from configuration for {{ target_switch }}
+- name: "Extract switch hostname from configuration for {{ target_switch }}"
   set_fact:
     switch_hostname: >-
       {%- set search_result = running_config_result.stdout | regex_search('hostname\\s+(\\S+)', '\\1') -%}
@@ -82,36 +78,36 @@
       {{ target_switch }}
       {%- endif -%}
 
-- name: Debug: Extracted hostname for {{ target_switch }}
+- name: "Debug: Extracted hostname for {{ target_switch }}"
   debug:
     msg: "Extracted hostname: {{ switch_hostname }}"
 
-- name: Set file path variable for configuration file for switch {{ target_switch }}
+- name: "Set file path variable for configuration file for switch {{ target_switch }}"
   set_fact:
     config_file_path: >-
-      {{ base_dir }}/{{ current_date }}/{{ switch_hostname | replace('\n','') | replace('"','') | replace("'",'') }}_IP_{{ target_switch | replace('.', '-') }}_{{ current_date }}.txt
+      {{ base_dir }}/{{ current_date }}/{{ switch_hostname | replace('\n','') | replace('\"','') | replace(\"'\",'') }}_IP_{{ target_switch | replace('.', '-') }}_{{ current_date }}.txt
 
-- name: Debug: Configuration file path for {{ target_switch }}
+- name: "Debug: Configuration file path for {{ target_switch }}"
   debug:
     msg: "Configuration file will be saved to: {{ config_file_path }}"
 
-- name: Check if the configuration file already exists for switch {{ target_switch }}
+- name: "Check if the configuration file already exists for switch {{ target_switch }}"
   stat:
     path: "{{ config_file_path }}"
   register: file_check
 
-- name: Debug: File existence check for {{ target_switch }}
+- name: "Debug: File existence check for {{ target_switch }}"
   debug:
     msg: "File exists at path? {{ file_check.stat.exists }}"
 
-- name: Save running configuration to file if it does not exist already for switch {{ target_switch }}
+- name: "Save running configuration to file if it does not exist already for switch {{ target_switch }}"
   copy:
     content: "{{ running_config_result.stdout }}"
     dest: "{{ config_file_path }}"
     mode: '0644'
   when: not file_check.stat.exists
 
-- name: Display final message for switch {{ target_switch }}
+- name: "Display final message for {{ target_switch }}"
   debug:
     msg: >
       {% if file_check.stat.exists %}
