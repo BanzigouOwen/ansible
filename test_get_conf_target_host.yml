@@ -1,5 +1,5 @@
 ---
-- name: Disable terminal length, show running-config, and exit in the same session
+- name: Retrieve and output Cisco running configuration for copy-paste
   hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: no
 
@@ -9,19 +9,18 @@
     target_switch_password: "{{ target_switch_password }}"  # Password for the switch
 
   tasks:
-    - name: Telnet to the target switch, disable pagination, get running config, and exit in the same session
+    - name: Telnet to the target switch, disable pagination, get running config, and exit in one session
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ target_switch_username }}"  # Provide username for login
-          "Password:": "{{ target_switch_password }}"  # Provide password for login
-      
-          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"  # Disable pagination, show config, and exit
-        timeout: 120  # Set timeout to 2 minutes for the full configuration
+          "Username:": "{{ target_switch_username }}"
+          "Password:": "{{ target_switch_password }}"
+          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"
+        timeout: 120
         echo: yes
       register: running_config_result
       failed_when: false
 
-    - name: Display the raw command output (stdout)
+    - name: Output the running configuration (plain text copy/paste)
       debug:
-        var: running_config_result.stdout
+        msg: "{{ running_config_result.stdout | regex_replace('\\r', '') }}"
