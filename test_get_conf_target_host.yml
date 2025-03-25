@@ -1,5 +1,5 @@
 ---
-- name: Retrieve Cisco running configuration in original format
+- name: Retrieve Cisco running configuration and save to file
   hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: no
 
@@ -32,6 +32,28 @@
             ]
           }}
 
-    - name: Display configuration for copy-paste
+    - name: Remove carriage returns from configuration text
+      set_fact:
+        config_text_clean: "{{ config_text | regex_replace('\\r', '') }}"
+
+    - name: Get current date (YYYY-MM-DD)
+      set_fact:
+        current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
+
+    - name: Extract hostname from configuration
+      set_fact:
+        config_hostname: "{{ config_text_clean | regex_search('hostname (\\S+)', '\\1') }}"
+        
+    - name: Define configuration file path
+      set_fact:
+        config_file: "/tmp/{{ config_hostname }}_{{ current_date }}.txt"
+
+    - name: Save configuration to file on AWX controller
+      copy:
+        content: "{{ config_text_clean }}"
+        dest: "{{ config_file }}"
+      delegate_to: localhost
+
+    - name: Display the file path of the saved configuration
       debug:
-        msg: "{{ config_text | regex_replace('\\r', '') }}"
+        msg: "Configuration saved in file: {{ config_file }}"
