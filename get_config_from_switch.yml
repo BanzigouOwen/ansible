@@ -5,7 +5,12 @@
     responses:
       "Username:": "{{ target_switch_username }}"
       "Password:": "{{ target_switch_password }}"
-      ".*#": "terminal length 0\nshow running-config\nexit\n"
+      responses:
+        ".*#": |
+          terminal length 0
+          show running-config
+          exit
+     # ".*#": "terminal length 0\nshow running-config\nexit\n"
     timeout: 120
     echo: yes
   register: running_config_result
