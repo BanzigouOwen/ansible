@@ -9,15 +9,19 @@
 - name: Detect vendor for {{ target_switch }}
   set_fact:
     vendor: >-
-      {%- if target_switch in (groups['switch_cisco'] | default([])) -%}
+      {%- if target_switch in (groups['switch_cisco'] | default([]) | list) -%}
       switch_cisco
-      {%- elif target_switch in (groups['switch_aruba'] | default([])) -%}
+      {%- elif target_switch in (groups['switch_aruba'] | default([]) | list) -%}
       switch_aruba
-      {%- elif target_switch in (groups['switch_huawei'] | default([])) -%}
+      {%- elif target_switch in (groups['switch_huawei'] | default([]) | list) -%}
       switch_huawei
       {%- else -%}
       unknown
       {%- endif -%}
+
+- name: Debug vendor detection for {{ target_switch }}
+  debug:
+    msg: "Target switch: {{ target_switch }}, Vendor detected: {{ vendor }}, Cisco: {{ groups['switch_cisco'] | default([]) }}, Aruba: {{ groups['switch_aruba'] | default([]) }}, Huawei: {{ groups['switch_huawei'] | default([]) }}"
 
 - name: Fail if vendor is unknown for {{ target_switch }}
   fail:
@@ -35,7 +39,7 @@
       "Username:": "{{ target_switch_username }}"
       "Password:": "{{ target_switch_password }}"
       ".*#": "{{ final_command }}\nexit"
-    timeout: 120
+    timeout: 30
     echo: yes
   register: running_config_result
   failed_when: "'Login incorrect' in running_config_result.stdout or 'not found' in running_config_result.stdout"
@@ -43,17 +47,17 @@
 
 - name: Skip this host if Telnet failed for {{ target_switch }}
   meta: end_host
-  when: running_config_result is failed or running_config_result.stdout is not defined
+  when: running_config_result is failed or not running_config_result.stdout
 
 - name: Extract switch hostname from configuration for {{ target_switch }}
   set_fact:
     switch_hostname: >-
-      {{
-        (running_config_result.stdout |
-         regex_search('hostname\\s+(\\S+)', '\\1')
-         | first)
-         | default(target_switch)
-      }}
+      {%- set search_result = running_config_result.stdout | regex_search('hostname\\s+(\\S+)', '\\1') -%}
+      {%- if search_result is iterable and search_result | length > 0 -%}
+      {{ search_result | first }}
+      {%- else -%}
+      {{ target_switch }}
+      {%- endif -%}
 
 - name: Set file path variable for configuration file for switch {{ target_switch }}
   set_fact:
