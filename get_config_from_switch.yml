@@ -1,0 +1,47 @@
+---
+- name: Telnet to target switch {{ target_switch }} to retrieve running config
+  expect:
+    command: "telnet {{ target_switch }}"
+    responses:
+      "Username:": "{{ target_switch_username }}"
+      "Password:": "{{ target_switch_password }}"
+      ".*#": "terminal length 0\nshow running-config\nexit\n"
+    timeout: 120
+    echo: yes
+  register: running_config_result
+  failed_when: false
+
+- name: Filter output to only the running configuration for switch {{ target_switch }}
+  set_fact:
+    config_output: >-
+      {{ running_config_result.stdout
+         | regex_replace('(?s)^.*?(\\S+#show running-config\\r?\\n)', '\\1') }}
+
+- name: Extract switch hostname from configuration for switch {{ target_switch }}
+  set_fact:
+    switch_hostname: "{{ config_output | regex_search('hostname\\s+(\\S+)', '\\1') }}"
+
+- name: Set file path variable for configuration file for switch {{ target_switch }}
+  set_fact:
+    config_file_path: "{{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt"
+
+- name: Check if the configuration file already exists for switch {{ target_switch }}
+  stat:
+    path: "{{ config_file_path }}"
+  register: file_check
+
+- name: Save running configuration to file if it does not exist already for switch {{ target_switch }}
+  copy:
+    content: "{{ config_output }}"
+    dest: "{{ config_file_path }}"
+    mode: '0644'
+  when: not file_check.stat.exists
+
+- name: Display final message for switch {{ target_switch }}
+  debug:
+    msg: >
+      {% if file_check.stat.exists %}
+      The configuration file already exists at {{ config_file_path }}. No new file was created.
+      {% else %}
+      The running configuration has been successfully saved at {{ config_file_path }}.
+      {% endif %}
