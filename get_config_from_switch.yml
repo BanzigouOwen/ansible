@@ -19,7 +19,7 @@
 
 - name: Extract switch hostname from configuration for switch {{ target_switch }}
   set_fact:
-    switch_hostname: "{{ config_output | regex_search('hostname\\s+(\\S+)', '\\1') }}"
+    switch_hostname: "{{ (config_output | regex_search('hostname\\s+(\\S+)', '\\1')) | first }}"
 
 - name: Set file path variable for configuration file for switch {{ target_switch }}
   set_fact:
