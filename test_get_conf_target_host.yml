@@ -1,5 +1,5 @@
 ---
-- name: Retrieve Cisco running configuration and save to file
+- name: Disable terminal length, show running-config, and exit in the same session
   hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: no
 
@@ -9,51 +9,19 @@
     target_switch_password: "{{ target_switch_password }}"  # Password for the switch
 
   tasks:
-    - name: Telnet to the target switch, disable pagination, show running-config, and exit
+    - name: Telnet to the target switch, disable pagination, get running config, and exit in the same session
       expect:
         command: "telnet {{ target_host }}"
         responses:
-          "Username:": "{{ target_switch_username }}"
-          "Password:": "{{ target_switch_password }}"
-          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"
-        timeout: 120
+          "Username:": "{{ target_switch_username }}"  # Provide username for login
+          "Password:": "{{ target_switch_password }}"  # Provide password for login
+      
+          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"  # Disable pagination, show config, and exit
+        timeout: 120  # Set timeout to 2 minutes for the full configuration
         echo: yes
       register: running_config_result
       failed_when: false
 
-    - name: Extract configuration portion in same format
-      set_fact:
-        config_text: >-
-          {{
-            running_config_result.stdout[
-              running_config_result.stdout.find('SWOCESC0-1#show running-config')
-              :
-              running_config_result.stdout.find('SWOCESC0-1#exit')
-            ]
-          }}
-
-    - name: Remove carriage returns from configuration text
-      set_fact:
-        config_text_clean: "{{ config_text | regex_replace('\\r', '') }}"
-
-    - name: Get current date (YYYY-MM-DD)
-      set_fact:
-        current_date: "{{ lookup('pipe', 'date +%Y-%m-%d') }}"
-
-    - name: Extract hostname from configuration
-      set_fact:
-        config_hostname: "{{ config_text_clean | regex_search('hostname (\\S+)', '\\1') }}"
-        
-    - name: Define configuration file path
-      set_fact:
-        config_file: "/tmp/{{ config_hostname }}_{{ current_date }}.txt"
-
-    - name: Save configuration to file on AWX controller
-      copy:
-        content: "{{ config_text_clean }}"
-        dest: "{{ config_file }}"
-      delegate_to: localhost
-
-    - name: Display the file path of the saved configuration
+    - name: Display the raw command output (stdout)
       debug:
-        msg: "Configuration saved in file: {{ config_file }}"
+        var: running_config_result.stdout
