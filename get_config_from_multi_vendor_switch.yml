@@ -60,6 +60,7 @@
         timeout: 30
         echo: yes
       register: running_config_result
+      ignore_errors: yes
   rescue:
     - name: "Telnet failed for {{ target_switch }}, skipping host"
       debug:
