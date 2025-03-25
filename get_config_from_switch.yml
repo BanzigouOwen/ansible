@@ -23,8 +23,8 @@
 
 - name: Set file path variable for configuration file for switch {{ target_switch }}
   set_fact:
-    config_file_path: >
-      {{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_IP_{{ target_switch | regex_replace('\\.', '-') }}_{{ current_date }}.txt
+    config_file_path: >-
+      {{ base_dir }}/{{ current_date }}/{{ switch_hostname | replace('\n','') | regex_replace('[\'"]', '') }}_IP_{{ target_switch | regex_replace('\\.', '-') | replace('\n','') | regex_replace('[\'"]', '') }}_{{ current_date }}.txt
 
 - name: Check if the configuration file already exists for switch {{ target_switch }}
   stat:
