@@ -5,8 +5,7 @@
     responses:
       "Username:": "{{ target_switch_username }}"
       "Password:": "{{ target_switch_password }}"
-      responses:
-        ".*#": |
+       ".*#": |
           terminal length 0
           show running-config
           exit
