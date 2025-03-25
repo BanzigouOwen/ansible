@@ -1,0 +1,78 @@
+---
+- name: Retrieve and store running configuration from multiple switches via jump host
+  hosts: 172.19.98.20  # Jump host
+  gather_facts: yes   # Needed to use ansible_date_time variable
+
+  vars:
+    target_switch_username: "{{ target_switch_username }}"
+    target_switch_password: "{{ target_switch_password }}"
+    base_dir: "/tmp/configurations"  # Base directory for saving config files
+
+  tasks:
+    - name: Ensure base directory exists
+      file:
+        path: "{{ base_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Set current date variable (DD-MM-YYYY)
+      set_fact:
+        current_date: "{{ ansible_date_time.date | regex_replace('(\\d{4})-(\\d{2})-(\\d{2})', '\\3-\\2-\\1') }}"
+
+    - name: Ensure today's date directory exists
+      file:
+        path: "{{ base_dir }}/{{ current_date }}"
+        state: directory
+        mode: '0755'
+
+    - name: Process each switch in group switch_cisco
+      block:
+        - name: Telnet to target switch {{ item }} to retrieve running config
+          expect:
+            command: "telnet {{ item }}"
+            responses:
+              "Username:": "{{ target_switch_username }}"
+              "Password:": "{{ target_switch_password }}"
+              ".*#": "terminal length 0\nshow running-config\nexit\n"
+            timeout: 120
+            echo: yes
+          register: running_config_result
+          failed_when: false
+
+        - name: Filter output to only the running configuration for switch {{ item }}
+          set_fact:
+            config_output: >-
+              {{ running_config_result.stdout
+                 | regex_replace('(?s)^.*?(\\S+#show running-config\\r?\\n)', '\\1') }}
+
+        - name: Extract switch hostname from configuration for switch {{ item }}
+          set_fact:
+            switch_hostname: "{{ config_output | regex_search('hostname\\s+(\\S+)', '\\1') }}"
+
+        - name: Set file path variable for configuration file for switch {{ item }}
+          set_fact:
+            config_file_path: "{{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt"
+
+        - name: Check if the configuration file already exists for switch {{ item }}
+          stat:
+            path: "{{ config_file_path }}"
+          register: file_check
+
+        - name: Save running configuration to file if it does not exist already for switch {{ item }}
+          copy:
+            content: "{{ config_output }}"
+            dest: "{{ config_file_path }}"
+            mode: '0644'
+          when: not file_check.stat.exists
+
+        - name: Display final message for switch {{ item }}
+          debug:
+            msg: >
+              {% if file_check.stat.exists %}
+              The configuration file already exists at {{ config_file_path }}. No new file was created.
+              {% else %}
+              The running configuration has been successfully saved at {{ config_file_path }}.
+              {% endif %}
+      loop: "{{ groups['switch_cisco'] }}"
+      loop_control:
+        loop_var: item
