@@ -1,0 +1,63 @@
+---
+- name: Determine switch vendor for {{ target_switch }}
+  set_fact:
+    vendor: >-
+      {% if target_switch in groups['switch_cisco'] %}switch_cisco
+      {% elif target_switch in groups['switch_aruba'] %}switch_aruba
+      {% elif target_switch in groups['switch_huawei'] %}switch_huawei
+      {% else %}unknown{% endif %}
+
+- name: Fail if switch vendor is unknown for {{ target_switch }}
+  fail:
+    msg: "Unknown switch vendor for {{ target_switch }}"
+  when: vendor == "unknown"
+
+- name: Set command for {{ target_switch }}
+  set_fact:
+    config_command: "{{ command_map[vendor] }}"
+
+- name: Telnet to target switch {{ target_switch }} to retrieve running config
+  expect:
+    command: "telnet {{ target_switch }}"
+    responses:
+      "Username:": "{{ target_switch_username }}"
+      "Password:": "{{ target_switch_password }}"
+      ".*#": "{{ config_command }}\nexit"
+    timeout: 120
+    echo: yes
+  register: running_config_result
+  failed_when: "'Login incorrect' in running_config_result.stdout or 'not found' in running_config_result.stdout"
+  ignore_errors: yes
+
+- name: Skip this host if Telnet failed for {{ target_switch }}
+  meta: end_host
+  when: running_config_result is failed or running_config_result.stdout is not defined
+
+- name: Extract switch hostname from configuration for {{ target_switch }}
+  set_fact:
+    switch_hostname: "{{ (running_config_result.stdout | regex_search('hostname\\s+(\\S+)', '\\1')) | first | default(target_switch) }}"
+
+- name: Set file path variable for configuration file for switch {{ target_switch }}
+  set_fact:
+    config_file_path: "{{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_IP_{{ target_switch | replace('.', '-') }}_{{ current_date }}.txt"
+
+- name: Check if the configuration file already exists for switch {{ target_switch }}
+  stat:
+    path: "{{ config_file_path }}"
+  register: file_check
+
+- name: Save running configuration to file if it does not exist already for switch {{ target_switch }}
+  copy:
+    content: "{{ running_config_result.stdout }}"
+    dest: "{{ config_file_path }}"
+    mode: '0644'
+  when: not file_check.stat.exists
+
+- name: Display final message for switch {{ target_switch }}
+  debug:
+    msg: >
+      {% if file_check.stat.exists %}
+      The configuration file already exists at {{ config_file_path }}. No new file was created.
+      {% else %}
+      The running configuration has been successfully saved at {{ config_file_path }}.
+      {% endif %}
