@@ -27,7 +27,7 @@
 
     - name: Debug: Print inventory groups for troubleshooting
       debug:
-        msg: >
+        msg: |
           Inventory Groups:
           Cisco: {{ groups['switch_cisco'] | default([]) }},
           Aruba: {{ groups['switch_aruba'] | default([]) }},
@@ -36,11 +36,9 @@
     - name: Debug: Show consolidated host list from groups for the loop
       debug:
         msg: >
-          Hosts in loop: {{
-            (groups['switch_cisco'] | default([])) +
-            (groups['switch_aruba'] | default([])) +
-            (groups['switch_huawei'] | default([]))
-          }}
+          {{ (groups['switch_cisco'] | default([])) +
+             (groups['switch_aruba'] | default([])) +
+             (groups['switch_huawei'] | default([])) }}
 
     - name: Retrieve configuration from all switches (Cisco, Aruba, Huawei)
       include_tasks: get_config_from_multi_vendor_switch.yml
