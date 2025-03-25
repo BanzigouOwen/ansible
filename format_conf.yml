@@ -1,5 +1,5 @@
 ---
-- name: Retrieve and display running configuration from Cisco Switch
+- name: Retrieve and store running configuration from Cisco Switch
   hosts: 172.19.98.20  # IP of the Jump Host
   gather_facts: no
 
@@ -7,6 +7,7 @@
     target_host: 172.16.3.3  # IP of the Target Switch
     target_switch_username: "{{ target_switch_username }}"  # Username for the switch
     target_switch_password: "{{ target_switch_password }}"  # Password for the switch
+    output_file: "/tmp/running-config.txt"
 
   tasks:
     - name: Telnet to target switch, disable pagination, show running-config, and exit
@@ -25,6 +26,23 @@
       set_fact:
         config_output: "{{ running_config_result.stdout | regex_replace('(?s)^.*?(SWOCESC0-1#show running-config\\r?\\n)', '\\1') }}"
 
-    - name: Display the running configuration in Cisco format
+    - name: Write the running configuration to a text file
+      copy:
+        content: "{{ config_output }}"
+        dest: "{{ output_file }}"
+        mode: '0644'
+
+    - name: Check if the configuration file exists
+      stat:
+        path: "{{ output_file }}"
+      register: config_file
+
+    - name: Display the file path and instructions
       debug:
-        msg: "{{ config_output }}"
+        msg: >
+          {% if config_file.stat.exists %}
+          The running configuration has been successfully saved at {{ output_file }}.
+          You can view it using "cat {{ output_file }}" or download it as needed.
+          {% else %}
+          The configuration file was not created.
+          {% endif %}
