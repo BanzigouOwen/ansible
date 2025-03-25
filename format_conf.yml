@@ -1,13 +1,12 @@
 ---
-- name: Retrieve and store running configuration from Cisco Switch
+- name: Retrieve and store running configuration in date-based folder
   hosts: 172.19.98.20  # IP of the Jump Host
-  gather_facts: no
-
+  gather_facts: yes   # Needed to use ansible_date_time variable
   vars:
-    target_host: 172.16.3.3  # IP of the Target Switch
-    target_switch_username: "{{ target_switch_username }}"  # Username for the switch
-    target_switch_password: "{{ target_switch_password }}"  # Password for the switch
-    output_file: "/tmp/running-config.txt"
+    target_host: 172.16.3.3         # IP of the Target Switch
+    target_switch_username: "{{ target_switch_username }}"
+    target_switch_password: "{{ target_switch_password }}"
+    base_dir: "/tmp/configurations" # Base directory for saving config files
 
   tasks:
     - name: Telnet to target switch, disable pagination, show running-config, and exit
@@ -22,27 +21,39 @@
       register: running_config_result
       failed_when: false
 
-    - name: Filter session output to extract only the running configuration
+    - name: Filter output to only the running configuration
       set_fact:
         config_output: "{{ running_config_result.stdout | regex_replace('(?s)^.*?(SWOCESC0-1#show running-config\\r?\\n)', '\\1') }}"
 
-    - name: Write the running configuration to a text file
+    - name: Extract switch hostname from configuration
+      set_fact:
+        switch_hostname: "{{ config_output | regex_search('hostname\\s+(\\S+)', '\\1') }}"
+
+    - name: Set current date variable (DD-MM-YYYY)
+      set_fact:
+         current_date: "{{ ansible_date_time.date | regex_replace('(\\d{4})-(\\d{2})-(\\d{2})', '\\3-\\2-\\1') }}"
+
+    - name: Ensure base directory exists
+      file:
+        path: "{{ base_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Ensure today's date directory exists
+      file:
+        path: "{{ base_dir }}/{{ current_date }}"
+        state: directory
+        mode: '0755'
+
+    - name: Save running configuration to file in the date directory
       copy:
         content: "{{ config_output }}"
-        dest: "{{ output_file }}"
+        dest: "{{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt"
         mode: '0644'
 
-    - name: Check if the configuration file exists
-      stat:
-        path: "{{ output_file }}"
-      register: config_file
-
-    - name: Display the file path and instructions
+    - name: Display file save path and instructions
       debug:
         msg: >
-          {% if config_file.stat.exists %}
-          The running configuration has been successfully saved at {{ output_file }}.
-          You can view it using "cat {{ output_file }}" or download it as needed.
-          {% else %}
-          The configuration file was not created.
-          {% endif %}
+          The running configuration has been saved at
+          {{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt.
+          You can view it with: cat {{ base_dir }}/{{ current_date }}/{{ switch_hostname }}_{{ current_date }}.txt
