@@ -30,7 +30,7 @@
         mode: '0755'
 
     - name: Retrieve configuration from switches
-      include_tasks: get_config_from_switch.yml
+      include_tasks: get_config_from_multi_vendor_switch.yml
       loop: "{{ groups['switch_cisco'] | default([]) + groups['switch_aruba'] | default([]) + groups['switch_huawei'] | default([]) }}"
       loop_control:
         loop_var: target_switch
