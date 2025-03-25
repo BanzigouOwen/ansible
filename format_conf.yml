@@ -1,0 +1,30 @@
+---
+- name: Retrieve and display running configuration from Cisco Switch
+  hosts: 172.19.98.20  # IP of the Jump Host
+  gather_facts: no
+
+  vars:
+    target_host: 172.16.3.3  # IP of the Target Switch
+    target_switch_username: "{{ target_switch_username }}"  # Username for the switch
+    target_switch_password: "{{ target_switch_password }}"  # Password for the switch
+
+  tasks:
+    - name: Telnet to target switch, disable pagination, show running-config, and exit
+      expect:
+        command: "telnet {{ target_host }}"
+        responses:
+          "Username:": "{{ target_switch_username }}"
+          "Password:": "{{ target_switch_password }}"
+          "SWOCESC0-1#": "terminal length 0\nshow running-config\nexit\n"
+        timeout: 120
+        echo: yes
+      register: running_config_result
+      failed_when: false
+
+    - name: Filter session output to extract only the running configuration
+      set_fact:
+        config_output: "{{ running_config_result.stdout | regex_replace('(?s)^.*?(SWOCESC0-1#show running-config\\r?\\n)', '\\1') }}"
+
+    - name: Display the running configuration in Cisco format
+      debug:
+        msg: "{{ config_output }}"
