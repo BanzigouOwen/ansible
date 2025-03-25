@@ -54,7 +54,7 @@
       "Username:": "{{ target_switch_username }}"
       "Password:": "{{ target_switch_password }}"
       ".*#": "{{ final_command }}\nexit"
-    timeout: 30
+    timeout: 120    # Increased timeout from 30 to 120 seconds
     echo: yes
   register: running_config_result
   failed_when: "'Login incorrect' in running_config_result.stdout or 'not found' in running_config_result.stdout"
@@ -100,7 +100,7 @@
   debug:
     msg: "File exists at path? {{ file_check.stat.exists }}"
 
-- name: "Save running configuration to file if it does not exist already for switch {{ target_switch }}"
+- name: "Save running configuration to file if it does not exist already for {{ target_switch }}"
   copy:
     content: "{{ running_config_result.stdout }}"
     dest: "{{ config_file_path }}"
