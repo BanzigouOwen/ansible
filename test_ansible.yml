@@ -1,31 +1,26 @@
 ---
-- name: Retrieve running configuration via SSH and save clean backup
-  hosts: 172.16.3.3       # Use the target switch IP
+# cisco_backup_ssh_proxy.yml
+- name: Backup Cisco Config via SSH Proxy
+  hosts: 172.16.3.3  # Directly target Cisco device
   gather_facts: no
-  connection: network_cli
+  connection: ansible.netcommon.network_cli
+
   vars:
     ansible_network_os: cisco.ios.ios
     ansible_user: "{{ target_switch_username }}"
     ansible_password: "{{ target_switch_password }}"
-    ansible_become: yes
-    ansible_become_method: enable
+    ansible_ssh_common_args: >-
+      -o ProxyCommand="ssh -W %h:%p -q jump_user@172.19.98.20"
 
   tasks:
-    - name: Disable pagination and retrieve running-config
-      cisco.ios.ios_command:
-        commands:
-          - terminal length 0
-          - show running-config
-      register: cmd_output
+    - name: Backup running configuration
+      cisco.ios.ios_config:
+        backup: yes
+        backup_options:
+          filename: "{{ inventory_hostname }}.cfg"
+          dir_path: "/backups/cisco/"
+      register: backup_result
 
-    - name: Save clean running config backup to file
-      copy:
-        # We assume the running configuration is returned in the second element.
-        # Depending on your IOS version the prompt/echo might be in stdout[0],
-        # so adjust the index if needed.
-        content: "{{ cmd_output.stdout[1] | trim }}"
-        dest: "/data/{{ inventory_hostname }}/running-config-backup.txt"
-
-    - name: Display backup file content (for verification)
+    - name: Show backup path
       debug:
-        msg: "{{ cmd_output.stdout[1] | trim }}"
+        msg: "Backup created at {{ backup_result.backup_path }}"
