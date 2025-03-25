@@ -1,16 +1,12 @@
 ---
 - name: Retrieve and store running configuration from multiple switches via jump host
   hosts: 172.19.98.20  # Jump host
-  gather_facts: yes   # Needed for ansible_date_time
+  gather_facts: yes
 
   vars:
     target_switch_username: "{{ target_switch_username }}"
     target_switch_password: "{{ target_switch_password }}"
     base_dir: "/tmp/configurations"  # Base directory for saving config files
-    command_map:
-      switch_cisco: "show running-config"
-      switch_aruba: "display current-configuration"
-      switch_huawei: "display current-configuration"
 
   tasks:
     - name: Ensure base directory exists
@@ -29,8 +25,13 @@
         state: directory
         mode: '0755'
 
-    - name: Retrieve configuration from switches
+    - name: Retrieve configuration from all switches (Cisco, Aruba, Huawei)
       include_tasks: get_config_from_multi_vendor_switch.yml
-      loop: "{{ groups['switch_cisco'] | default([]) + groups['switch_aruba'] | default([]) + groups['switch_huawei'] | default([]) }}"
+      loop: >
+        {{
+          (groups['switch_cisco'] | default([])) +
+          (groups['switch_aruba'] | default([])) +
+          (groups['switch_huawei'] | default([]))
+        }}
       loop_control:
         loop_var: target_switch
