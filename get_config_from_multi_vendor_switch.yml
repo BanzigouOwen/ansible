@@ -47,26 +47,32 @@
   debug:
     msg: "Final command for vendor '{{ vendor }}': {{ final_command }}"
 
-- name: "Telnet to target switch {{ target_switch }} to retrieve configuration"
-  expect:
-    command: "telnet {{ target_switch }}"
-    responses:
-      "Username:": "{{ target_switch_username }}"
-      "Password:": "{{ target_switch_password }}"
-      ".*#": "{{ final_command }}\nexit"
-    timeout: 120    # Increased timeout from 30 to 120 seconds
-    echo: yes
-  register: running_config_result
-  failed_when: "'Login incorrect' in running_config_result.stdout or 'not found' in running_config_result.stdout"
-  ignore_errors: yes
+# Wrap the Telnet step in a block/rescue to skip host on error
+- block:
+    - name: "Telnet to target switch {{ target_switch }} to retrieve configuration"
+      expect:
+        command: "telnet {{ target_switch }}"
+        responses:
+          "Username:": "{{ target_switch_username }}"
+          "Password:": "{{ target_switch_password }}"
+          # Adjust regex if necessary; here we accept prompt ending with '#' or '>'
+          ".*[#>]": "{{ final_command }}\nexit"
+        timeout: 30
+        echo: yes
+      register: running_config_result
+  rescue:
+    - name: "Telnet failed for {{ target_switch }}, skipping host"
+      debug:
+        msg: "Telnet failed for {{ target_switch }}. Skipping host."
+    - meta: end_host
 
 - name: "Debug: Telnet result for {{ target_switch }}"
   debug:
     msg: "Telnet result for {{ target_switch }}: {{ running_config_result.stdout }}"
 
-- name: "Skip this host if Telnet failed for {{ target_switch }}"
+- name: "Skip this host if Telnet did not return any output"
   meta: end_host
-  when: running_config_result is failed or not running_config_result.stdout
+  when: not running_config_result.stdout
 
 - name: "Extract switch hostname from configuration for {{ target_switch }}"
   set_fact:
